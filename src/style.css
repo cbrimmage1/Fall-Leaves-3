@@ -1,0 +1,46 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    overflow: hidden;
+}
+
+.webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+}
+
+#icons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding-top: 1em;
+    padding-right: 1.1em;
+    font-size: 2.5rem;
+    color: white;
+    z-index: 1;
+}
+
+#info__icon
+{
+    padding-bottom: 0.75em;
+}
+
+#music__icon
+{
+    padding-bottom: 0.75em;
+}
+
+#sound__icon
+{
+    padding-bottom: 0.75em;
+}
