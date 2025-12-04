@@ -11,9 +11,19 @@
 
 <body>
     <div id="icons">
-        <i class="fa-solid fa-circle-info" id="info__icon"></i>
-        <i class="fa-solid fa-music" id="music__icon"></i>
-        <i class="fa-solid fa-volume-off" id="sound__icon"></i>
+        <button id="info__icon"><i class="fa-solid fa-circle-info"></i></button>
+        <button id="leaf__icon"><i class="fa-solid fa-leaf"></i></button>
+        <button id="music__icon"><i class="fa-solid fa-music"></i></button>
+        <button id="sound__icon"><i class="fa-solid fa-volume-off"></i></button>
+    </div>
+    <div class="popup" id="popup">
+        <div id="popup__inner">
+            <h3 id="popup__header"> Leave a whisper</h3>
+            <p>Whispers are notes left behind for other visitors to discover. Share a feeling, memory, or anything else
+                you want to release into the Fall winds. Max 50 characters.</p>
+            <input type="text" placeholder="Your whisper..." id="popup__input" maxlength="50">
+            <button id="popup__submit">Submit a message</button>
+        </div>
     </div>
     <canvas class="webgl"></canvas>
     <script type="module" src="./script.js"></script>

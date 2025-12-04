@@ -5,6 +5,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import CANNON from 'cannon'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+// *~ GRAB ICON ELEMENTS~*
+let infoIcon = document.getElementById('info__icon');
+let leafIcon = document.getElementById('leaf__icon');
+let musicIcon = document.getElementById('music__icon');
+let soundIcon = document.getElementById('sound__icon');
 
 // *~ VARIABLES FOR 'WHISPERS' EVENT
 let cursor = new THREE.Vector2();
@@ -12,6 +17,29 @@ let intersectionPoint = new THREE.Vector3();
 let planeNormal = new THREE.Vector3();
 let mousePlane = new THREE.Plane();
 let raycaster = new THREE.Raycaster();
+
+//Fetch all the messages from the server
+fetch('/messages')
+    .then(response => {
+        return response.json()
+    })
+    .then(data => {
+        console.log(data);
+        //Add all the messages from the server to the page
+        let messages = data.data;
+        console.log(messages);
+        for (let i = 0; i < messages.length; i++) {
+            console.log(messages[i]);
+            let message = messages[i].message;
+            console.log(message);
+            // let newMessage = document.createElement('p');
+            // newMessage.innerHTML = message;
+        }
+    })
+    .catch(error => {
+        console.log(error);
+    });
+
 
 
 // *~ THREE.JS SETUP ~*
@@ -40,7 +68,7 @@ const environmentMapTexture = cubeTextureLoader.load([
 ])
 
 
-// *~ MODEL LOADER ~*
+// *~ TREE MODEL LOADER ~*
 let gltfLoader = new GLTFLoader();
 
 gltfLoader.load(
@@ -51,8 +79,8 @@ gltfLoader.load(
         let tree = glb.scene;
 
         // cast shadows
-        tree.traverse( (node) => {
-            if(node.isMesh) {
+        tree.traverse((node) => {
+            if (node.isMesh) {
                 node.castShadow = true;
             }
         })
@@ -282,7 +310,7 @@ let createLeaf = (width, height, depth, position, color) => {
     mesh.rotation.set(0, Math.random() * 0.5, 0);
     mesh.castShadow = true;
     mesh.position.copy(position);
-    mesh.material.color.setHex( color );
+    mesh.material.color.setHex(color);
     scene.add(mesh);
 
     // create cannon.js leaf physics body
@@ -306,36 +334,35 @@ let createLeaf = (width, height, depth, position, color) => {
 }
 
 
-// keydown function – call creaeLeaf function
-window.addEventListener('keydown', (event) => {
+// call creaeLeaf function on leafIcon click
+leafIcon.addEventListener('click', () => {
 
-    if (event.code === "Space") {
-        createLeaf(
-            // width, height, depth
-            Math.random() * (0.45 - 0.25) + 0.25,
-            0.04,
-            0.25,
-            // position
-            {
-                x: Math.random() * 2 - 0.1,
-                y: 4,
-                z: Math.random() * 2 - 0.3
-            },
-            // hex
-            Math.random() * 0xffffff
+    createLeaf(
+        // width, height, depth
+        Math.random() * (0.45 - 0.25) + 0.25,
+        0.04,
+        0.25,
+        // position
+        {
+            x: Math.random() * 2 - 0.1,
+            y: 4,
+            z: Math.random() * 2 - 0.3
+        },
+        // hex
+        Math.random() * 0xffffff
 
-        );
+    );
 
-        for (let object of leaves) {
+    for (let object of leaves) {
 
-            if (leaves.length > 200) {
-                leaves.shift(); // remove 1st object in the array
-                world.remove(object.body); // remove physics
-                scene.remove(object.mesh); // remove mesh
-            }
-
+        if (leaves.length > 200) {
+            leaves.shift(); // remove 1st object in the array
+            world.remove(object.body); // remove physics
+            scene.remove(object.mesh); // remove mesh
         }
+
     }
+
 })
 
 
@@ -348,27 +375,35 @@ let whisperMaterial = new THREE.MeshStandardMaterial({
     roughness: 0
 })
 
-window.addEventListener('dblclick', () => {
+// popup window targets
+// let popup = document.getElementById("popup")
 
-    let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
-    scene.add(whisperMesh);
+window.addEventListener('dblclick', (event) => {
 
-    // place whisper at mouse position
-    whisperMesh.position.copy(intersectionPoint);
+    if (event.target !== leafIcon) {
+        // popup.classList.add("open");
 
-    // add whisper to array
-    whispers.push(whisperMesh);
+        let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
+        scene.add(whisperMesh);
 
-    // delete whisper after 'x' amount of seconds
-    for (let object of whispers) {
-        setInterval(() => {
-            whispers.shift(); // remove 1st object in the array
-            scene.remove(object); // remove mesh
-        }, 10000)
+        // place whisper at mouse position
+        whisperMesh.position.copy(intersectionPoint);
+
+        // add whisper to array
+        whispers.push(whisperMesh);
+
+        // delete whisper after 'x' amount of seconds
+        for (let object of whispers) {
+            setInterval(() => {
+                whispers.shift(); // remove 1st object in the array
+                scene.remove(object); // remove mesh
+            }, 10000)
+        }
+        console.log(whispers)
+    } else {
+        // don't create a whisper if leaf button is hit
+        event.preventDefault()
     }
-    console.log(whispers)
-
-
 
 })
 
