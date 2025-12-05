@@ -32,14 +32,11 @@ fetch('/messages')
             console.log(messages[i]);
             let message = messages[i].message;
             console.log(message);
-            // let newMessage = document.createElement('p');
-            // newMessage.innerHTML = message;
         }
     })
     .catch(error => {
         console.log(error);
     });
-
 
 
 // *~ THREE.JS SETUP ~*
@@ -78,7 +75,7 @@ gltfLoader.load(
         // tree models
         let tree = glb.scene;
 
-        // cast shadows
+        // // cast shadows
         tree.traverse((node) => {
             if (node.isMesh) {
                 node.castShadow = true;
@@ -105,36 +102,37 @@ gltfLoader.load(
         scene.add(treeSeven);
 
         // set tree positions & rotation
-        //1
+        // 1
         tree.scale.set(0.80, 0.80, 0.80);
         tree.position.set(3, -0.2, -14);
 
-        //2
+        // 2
         treeTwo.scale.set(0.60, 0.60, 0.60);
         treeTwo.position.set(4, -0.2, -8);
         treeTwo.rotation.set(0, 1, 0)
 
-        //3
+        // 3
         treeThree.scale.set(0.70, 0.70, 0.70);
         treeThree.position.set(15, -0.2, -7);
 
-        //4
+        // 4
         treeFour.scale.set(0.70, 0.70, 0.70);
         treeFour.position.set(5, -0.2, -9);
 
-        //5
+        // 5
         treeFive.scale.set(0.60, 0.60, 0.60);
         treeFive.position.set(12, -0.2, -3);
 
-        //6
+        // 6
         treeSix.scale.set(0.60, 0.60, 0.60);
         treeSix.position.set(15, -0.2, -12);
 
-        //7
+        // 7
         treeSeven.scale.set(0.75, 0.75, 0.75);
         treeSeven.position.set(5, -0.2, -15);
 
     }
+
 )
 
 
@@ -266,11 +264,12 @@ scene.add(camera)
 // *~ ORBIT CONTROLS
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
+controls.dampingFactor = 0.01;
 controls.enablePan = false;
 controls.minPolarAngle = Math.PI * 0.35;
 controls.maxPolarAngle = Math.PI * 0.45;
-controls.minAzimuthAngle = - 1.3;
-controls.maxAzimuthAngle = 0.005;
+controls.minAzimuthAngle = - 1;
+controls.maxAzimuthAngle = -0.5;
 controls.maxDistance = 5;
 controls.minDistance = 2;
 
@@ -287,7 +286,6 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 // *~ CREATE LEAVES ~*
 let leaves = [];
-// let colors = ['#5a612b', '#a14a21', '#e9d1a0'];
 
 // leaf geometry
 let leafGeometry = new THREE.BoxGeometry(1, 0.01, 1);
@@ -296,8 +294,8 @@ let leafGeometry = new THREE.BoxGeometry(1, 0.01, 1);
 let leafMaterial = new THREE.MeshStandardMaterial({
     metalness: 0,
     roughness: 1,
-    envMap: environmentMapTexture
-    // color: Math.random() * 0xffffff
+    envMap: environmentMapTexture,
+    color: 0xa14a21
 })
 
 
@@ -368,6 +366,7 @@ leafIcon.addEventListener('click', () => {
 
 // *~ ADD WHISPERS TO SCENE (ON MOUSE DOUBLE CLICK) ~*
 let whispers = [];
+
 let whisperGeometry = new THREE.SphereGeometry(0.07, 30, 30);
 let whisperMaterial = new THREE.MeshStandardMaterial({
     color: 0xFFEA00,
@@ -375,41 +374,121 @@ let whisperMaterial = new THREE.MeshStandardMaterial({
     roughness: 0
 })
 
-// popup window targets
-// let popup = document.getElementById("popup")
+// whisper popup window targets
+let popup = document.getElementById("popup")
+let popupInner = document.getElementById('popup__inner')
+let whisper = document.querySelector('#popup__input')
+let whisperInput = document.getElementById('popup__input')
+let whisperSubmit = document.querySelector('#popup__submit')
+// for text
+let whisperContainer = document.getElementById("whisper__container")
+let textPosition = new THREE.Vector3;
 
-window.addEventListener('dblclick', (event) => {
+window.addEventListener('dblclick', () => {
 
-    if (event.target !== leafIcon) {
-        // popup.classList.add("open");
+    // prevent creation when leafButton is clicked
+    //
 
-        let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
-        scene.add(whisperMesh);
+    // create whisper mesh
+    let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
+    scene.add(whisperMesh);
 
-        // place whisper at mouse position
-        whisperMesh.position.copy(intersectionPoint);
+    // place whisper at mouse position
+    whisperMesh.position.copy(intersectionPoint);
 
-        // add whisper to array
-        whispers.push(whisperMesh);
+    // add whisper to array
+    whispers.push(whisperMesh);
 
-        // delete whisper after 'x' amount of seconds
-        for (let object of whispers) {
-            setInterval(() => {
-                whispers.shift(); // remove 1st object in the array
-                scene.remove(object); // remove mesh
-            }, 10000)
+    // delete whisper after 'x' amount of seconds
+    // for (let object of whispers) {
+    //     setInterval(() => {
+    //         whispers.shift(); // remove 1st object in the array
+    //         scene.remove(object); // remove mesh
+    //     }, 10000)
+    // }
+    console.log(whispers)
+
+
+    // toggle pop up
+    popup.classList.add("open")
+
+})
+
+// if input is received, then create a whisper
+// listen for whisper submission
+whisperSubmit.addEventListener('click', () => {
+    let whisperValue = whisper.value
+    console.log(whisperValue)
+    if (whisperValue !== '') {
+
+        // ↓  ↓ send whisper to server ↓ ↓ 
+        // 1. create whisper text object
+        let whisperObject = {
+            message: whisperValue
         }
-        console.log(whispers)
-    } else {
-        // don't create a whisper if leaf button is hit
-        event.preventDefault()
+        // console.log(whisperObject)
+
+        // 2. stringify the data
+        let whisperObjectJSON = JSON.stringify(whisperObject);
+
+        // 3. create a post request
+        //
+
+        // 4. create text element
+        let newMessage = document.createElement('p');
+        newMessage.className = 'whisper__text'
+        newMessage.id = 'whisper__text'
+        newMessage.innerHTML = whisperValue
+        console.log(newMessage)
+        // console.log(newMessage)
+        whisperContainer.appendChild(newMessage)
+
+
+        // 5. place whisper text at whisper mesh position
+        // move this to tick function?
+        for (let object of whispers) {
+            textPosition.setFromMatrixPosition(object.matrixWorld)
+            textPosition.project(camera);
+            let widthQuarter = canvas.width / 4;
+            let heightQuarter = canvas.height / 4;
+            textPosition.x = (textPosition.x * widthQuarter) + widthQuarter;
+            textPosition.y = - (textPosition.y * heightQuarter) + heightQuarter;
+            newMessage.style.top = `${textPosition.y}px`
+            newMessage.style.left = `${textPosition.x}px`
+        }
+
+
+    } else if (whisperValue == '') {
+
+        // need 2 make sure to only delete creations from user
+        //
+
+        let remove = whispers.pop()
+        scene.remove(remove)
     }
+
+    //close popup
+    popup.classList.remove("open")
+
+    // clear input
+    whisperInput.value = "";
 
 })
 
 
+// close popup window by clicking outside popup
+window.addEventListener('click', (event) => {
+    if (event.target !== whisper || event.target == popupInner) {
+        popup.classList.remove("open")
+    }
 
-// *~ ANIMATE ~*
+
+})
+// prevent popup being closed from clicking inside popup
+popupInner.addEventListener('click', event => event.stopPropagation());
+
+
+// *~ THREE.JS ANIMATE ~*
 const clock = new THREE.Clock()
 let previousElapsedTime = 0;
 
@@ -419,7 +498,6 @@ const tick = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousElapsedTime;
     previousElapsedTime = elapsedTime;
-
 
     // update wind force
     for (let object of leaves) {
@@ -432,17 +510,14 @@ const tick = () => {
     world.step(1 / 60, deltaTime, 3);
 
 
-    // update createLeaf sphere positions
+    // update createLeaf physics positions
     for (let object of leaves) {
         object.mesh.position.copy(object.body.position)
     }
 
+    // update whisper animations
+    //
 
-    // update whispers position
-    // for (let i = 0; i < whispers.length; i++) {
-    //     gsap.to(whispers[i].position, { duration: 1, delay: 1, x: 1 })
-    //     gsap.to(whispers[i].position, { duration: 1, delay: 2, x: 0 })
-    // }
 
     // update orbit controls
     controls.update()

@@ -1,4 +1,3 @@
-// const { MongoClient, ServerApiVersion } = require('mongodb')
 import { MongoClient, ServerApiVersion } from 'mongodb'
 import dotenv from 'dotenv'
 

@@ -88,7 +88,7 @@ body {
 
 .popup.open {
     opacity: 1;
-    z-index: 999;
+    z-index: 10;
 }
 
 #popup__inner {
@@ -98,4 +98,10 @@ body {
     padding: 15px 25px;
     text-align: center;
     width: 380px;
+}
+
+.whisper__text {
+    z-index: 100;
+    position: absolute;
+    color: white;
 }
