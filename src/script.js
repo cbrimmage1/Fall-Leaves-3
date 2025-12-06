@@ -4,12 +4,24 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import CANNON from 'cannon'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import gsap from 'gsap';
 
-// *~ GRAB ICON ELEMENTS~*
+
+// *~ GRAB DOM ELEMENTS~*
+// icons
 let infoIcon = document.getElementById('info__icon');
 let leafIcon = document.getElementById('leaf__icon');
 let musicIcon = document.getElementById('music__icon');
 let soundIcon = document.getElementById('sound__icon');
+// whisper pop up
+let popup = document.getElementById("popup")
+let popupInner = document.getElementById('popup__inner')
+let whisper = document.querySelector('#popup__input')
+let whisperInput = document.getElementById('popup__input')
+let whisperSubmit = document.querySelector('#popup__submit')
+// whisper text container
+let whisperContainer = document.getElementById("whisper__container")
+
 
 // *~ VARIABLES FOR 'WHISPERS' EVENT
 let cursor = new THREE.Vector2();
@@ -18,7 +30,8 @@ let planeNormal = new THREE.Vector3();
 let mousePlane = new THREE.Plane();
 let raycaster = new THREE.Raycaster();
 
-//Fetch all the messages from the server
+
+//*~ FETCH WHISPER MESSAGES FROM THE SERVER
 fetch('/messages')
     .then(response => {
         return response.json()
@@ -26,12 +39,24 @@ fetch('/messages')
     .then(data => {
         console.log(data);
         //Add all the messages from the server to the page
-        let messages = data.data;
-        console.log(messages);
-        for (let i = 0; i < messages.length; i++) {
-            console.log(messages[i]);
-            let message = messages[i].message;
-            console.log(message);
+        let loadedWhispers = data.data;
+        console.log(loadedWhispers);
+        for (let i = 0; i < loadedWhispers.length; i++) {
+            // grab text
+            let message = loadedWhispers[i].text;
+            console.log(message)
+
+            // grab position
+            let position = loadedWhispers[i].position;
+            console.log(position)
+
+            // create new mesh
+            let loadWhisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
+            scene.add(loadWhisperMesh);
+
+            // place loaded whisper
+            loadWhisperMesh.position.copy(position)
+
         }
     })
     .catch(error => {
@@ -51,6 +76,35 @@ scene.background = new THREE.Color(0xE09B51);
 scene.fog = new THREE.FogExp2(0xE09B51, 0.09);
 
 
+// *~ LIGHTS ~*
+const ambientLight = new THREE.AmbientLight(0xffffff, 2.1)
+scene.add(ambientLight)
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
+directionalLight.castShadow = true
+directionalLight.shadow.mapSize.set(1024, 1024)
+directionalLight.shadow.camera.far = 15
+directionalLight.shadow.camera.left = - 7
+directionalLight.shadow.camera.top = 7
+directionalLight.shadow.camera.right = 7
+directionalLight.shadow.camera.bottom = - 7
+directionalLight.position.set(5, 5, 5)
+scene.add(directionalLight)
+
+
+// *~ SIZES ~*
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
+
+
+// *~ CAMERA ~*
+let camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+camera.position.set(- 3, 1, 3)
+scene.add(camera)
+
+
 // *~ TEXTURES ~*
 const textureLoader = new THREE.TextureLoader()
 const cubeTextureLoader = new THREE.CubeTextureLoader()
@@ -63,6 +117,22 @@ const environmentMapTexture = cubeTextureLoader.load([
     '/textures/environmentMaps/0/pz.png',
     '/textures/environmentMaps/0/nz.png'
 ])
+
+
+// *~ FLOOR ~*
+const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(50, 50),
+    new THREE.MeshStandardMaterial({
+        color: '#9f562c',
+        metalness: 0,
+        roughness: 1,
+        envMap: environmentMapTexture,
+        envMapIntensity: 0.5
+    })
+)
+floor.receiveShadow = true
+floor.rotation.x = - Math.PI * 0.5
+scene.add(floor)
 
 
 // *~ TREE MODEL LOADER ~*
@@ -136,8 +206,21 @@ gltfLoader.load(
 )
 
 
+// *~ ORBIT CONTROLS
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true
+controls.dampingFactor = 0.01;
+controls.enablePan = false;
+controls.minPolarAngle = Math.PI * 0.35;
+controls.maxPolarAngle = Math.PI * 0.45;
+controls.minAzimuthAngle = - 1;
+controls.maxAzimuthAngle = -0.5;
+controls.maxDistance = 5;
+controls.minDistance = 2;
+
+
 // *~ PHYSICS ~*
-// create world
+// create physics world
 let world = new CANNON.World();
 world.broadphase = new CANNON.SAPBroadphase(world);
 
@@ -146,7 +229,7 @@ world.defaultContactMaterial.contactEquationRelaxation = 2; // Stabilization tim
 
 world.gravity.set(0, -1.82, 0);
 
-// materials
+// physics materials
 let floorMaterial = new CANNON.Material('floor');
 let leafPhysicsMaterial = new CANNON.Material('leaf');
 
@@ -185,45 +268,7 @@ floorBody.quaternion.setFromAxisAngle( // rotate floor
 );
 world.addBody(floorBody); // add floor to physics world
 
-
-// *~ FLOOR ~*
-const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(50, 50),
-    new THREE.MeshStandardMaterial({
-        color: '#9f562c',
-        metalness: 0,
-        roughness: 1,
-        envMap: environmentMapTexture,
-        envMapIntensity: 0.5
-    })
-)
-floor.receiveShadow = true
-floor.rotation.x = - Math.PI * 0.5
-scene.add(floor)
-
-
-// *~ LIGHTS ~*
-const ambientLight = new THREE.AmbientLight(0xffffff, 2.1)
-scene.add(ambientLight)
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
-directionalLight.castShadow = true
-directionalLight.shadow.mapSize.set(1024, 1024)
-directionalLight.shadow.camera.far = 15
-directionalLight.shadow.camera.left = - 7
-directionalLight.shadow.camera.top = 7
-directionalLight.shadow.camera.right = 7
-directionalLight.shadow.camera.bottom = - 7
-directionalLight.position.set(5, 5, 5)
-scene.add(directionalLight)
-
-
-// *~ SIZES ~*
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
-
+// *~ MOUSE MOVE EVENT ~*
 // mouse move
 window.addEventListener('mousemove', (event) => {
     // update mouse coordinates
@@ -254,26 +299,6 @@ window.addEventListener('resize', () => {
 })
 
 
-// *~ CAMERA ~*
-// Base camera
-let camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(- 3, 1, 3)
-scene.add(camera)
-
-
-// *~ ORBIT CONTROLS
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
-controls.dampingFactor = 0.01;
-controls.enablePan = false;
-controls.minPolarAngle = Math.PI * 0.35;
-controls.maxPolarAngle = Math.PI * 0.45;
-controls.minAzimuthAngle = - 1;
-controls.maxAzimuthAngle = -0.5;
-controls.maxDistance = 5;
-controls.minDistance = 2;
-
-
 // *~ RENDERER ~*
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas
@@ -285,6 +310,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 
 // *~ CREATE LEAVES ~*
+// leaves array
 let leaves = [];
 
 // leaf geometry
@@ -331,7 +357,6 @@ let createLeaf = (width, height, depth, position, color) => {
     })
 }
 
-
 // call creaeLeaf function on leafIcon click
 leafIcon.addEventListener('click', () => {
 
@@ -364,34 +389,34 @@ leafIcon.addEventListener('click', () => {
 })
 
 
-// *~ ADD WHISPERS TO SCENE (ON MOUSE DOUBLE CLICK) ~*
+// *~ CREATE WHISPERS ~*
+// whispers array
 let whispers = [];
 
-let whisperGeometry = new THREE.SphereGeometry(0.07, 30, 30);
+// whisper animation timeline -- !! once you replace w/ blender mesh, animate so that it expands on hover !!
+let tl = gsap.timeline(
+    {
+        repeat: -1,
+        yoyo: true,
+    });
+
+// whisper geometry
+let whisperGeometry = new THREE.SphereGeometry(0.05, 30, 30);
+
+// whisper material
 let whisperMaterial = new THREE.MeshStandardMaterial({
     color: 0xFFEA00,
     metalness: 0,
     roughness: 0
 })
 
-// whisper popup window targets
-let popup = document.getElementById("popup")
-let popupInner = document.getElementById('popup__inner')
-let whisper = document.querySelector('#popup__input')
-let whisperInput = document.getElementById('popup__input')
-let whisperSubmit = document.querySelector('#popup__submit')
-// for text
-let whisperContainer = document.getElementById("whisper__container")
-let textPosition = new THREE.Vector3;
-
-window.addEventListener('dblclick', () => {
-
-    // prevent creation when leafButton is clicked
-    //
-
+// called to create new whisper meshes
+let createWhisper = () => {
     // create whisper mesh
     let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
+    whisperMesh.visible = false; // mesh visibility
     scene.add(whisperMesh);
+    console.log(whisperMesh)
 
     // place whisper at mouse position
     whisperMesh.position.copy(intersectionPoint);
@@ -399,72 +424,92 @@ window.addEventListener('dblclick', () => {
     // add whisper to array
     whispers.push(whisperMesh);
 
-    // delete whisper after 'x' amount of seconds
-    // for (let object of whispers) {
-    //     setInterval(() => {
-    //         whispers.shift(); // remove 1st object in the array
-    //         scene.remove(object); // remove mesh
-    //     }, 10000)
-    // }
     console.log(whispers)
 
+    // animate
+    tl.to(whisperMesh.scale, { duration: 1, x: 1.3, y: 1.3, z: 1.3 }, 'start')
+
+
+}
+
+// create whisper mesh + trigger popup on dbl click
+window.addEventListener('dblclick', () => {
+
+    // create mesh element at click location
+    createWhisper();
 
     // toggle pop up
     popup.classList.add("open")
 
 })
 
-// if input is received, then create a whisper
-// listen for whisper submission
+// if input is received, then :
 whisperSubmit.addEventListener('click', () => {
     let whisperValue = whisper.value
-    console.log(whisperValue)
+    let lastWhisper = whispers[whispers.length - 1]
+
+    // if the submission isn't empty
     if (whisperValue !== '') {
 
-        // ↓  ↓ send whisper to server ↓ ↓ 
+        // *~ SEND WHISPER MESSAGE TO SERVER ~*
         // 1. create whisper text object
         let whisperObject = {
-            message: whisperValue
+            message: whisperValue,
+            position: {
+                x: whispers[whispers.length - 1].position.x,
+                y: whispers[whispers.length - 1].position.y,
+                z: whispers[whispers.length - 1].position.z
+            }
+
         }
-        // console.log(whisperObject)
+
+        console.log(whisperObject)
 
         // 2. stringify the data
         let whisperObjectJSON = JSON.stringify(whisperObject);
 
         // 3. create a post request
-        //
+        fetch('/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: whisperObjectJSON
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Message created:', data);
+                // 4. create text element
+                let newMessage = document.createElement('p');
+                newMessage.className = 'whisper__text'
+                newMessage.innerHTML = whisperValue
+                newMessage.visi
+                newMessage.setAttribute('data-position', JSON.stringify(whisperObject.position));
+                console.log(newMessage)
+                // console.log(newMessage)
+                whisperContainer.appendChild(newMessage) // !! change to modals !!
 
-        // 4. create text element
-        let newMessage = document.createElement('p');
-        newMessage.className = 'whisper__text'
-        newMessage.id = 'whisper__text'
-        newMessage.innerHTML = whisperValue
-        console.log(newMessage)
-        // console.log(newMessage)
-        whisperContainer.appendChild(newMessage)
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
 
 
-        // 5. place whisper text at whisper mesh position
-        // move this to tick function?
-        for (let object of whispers) {
-            textPosition.setFromMatrixPosition(object.matrixWorld)
-            textPosition.project(camera);
-            let widthQuarter = canvas.width / 4;
-            let heightQuarter = canvas.height / 4;
-            textPosition.x = (textPosition.x * widthQuarter) + widthQuarter;
-            textPosition.y = - (textPosition.y * heightQuarter) + heightQuarter;
-            newMessage.style.top = `${textPosition.y}px`
-            newMessage.style.left = `${textPosition.x}px`
-        }
+        // 5. show mesh element
+        lastWhisper.visible = true;
+
 
 
     } else if (whisperValue == '') {
 
-        // need 2 make sure to only delete creations from user
-        //
-
         let remove = whispers.pop()
         scene.remove(remove)
+
     }
 
     //close popup
@@ -475,15 +520,13 @@ whisperSubmit.addEventListener('click', () => {
 
 })
 
-
 // close popup window by clicking outside popup
 window.addEventListener('click', (event) => {
     if (event.target !== whisper || event.target == popupInner) {
         popup.classList.remove("open")
     }
-
-
 })
+
 // prevent popup being closed from clicking inside popup
 popupInner.addEventListener('click', event => event.stopPropagation());
 
@@ -509,15 +552,10 @@ const tick = () => {
     // update physics world
     world.step(1 / 60, deltaTime, 3);
 
-
     // update createLeaf physics positions
     for (let object of leaves) {
         object.mesh.position.copy(object.body.position)
     }
-
-    // update whisper animations
-    //
-
 
     // update orbit controls
     controls.update()
