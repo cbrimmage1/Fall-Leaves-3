@@ -5,12 +5,14 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import CANNON from 'cannon'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import gsap from 'gsap';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-// firefly model
+// firefly model + animation variables
 let firefly;
-let mixer;
+// let mixer;
+let clips;
+let mixers = [];
 
-// ????
 let INTERSECTED;
 
 // whispers array
@@ -41,6 +43,18 @@ let intersectionPoint = new THREE.Vector3();
 let planeNormal = new THREE.Vector3();
 let mousePlane = new THREE.Plane();
 let raycaster = new THREE.Raycaster();
+
+// *~ FIREFLY MODEL LOADER ~*
+let gltfFireflyLoader = new GLTFLoader();
+
+gltfFireflyLoader.load(
+    '/models/scene.gltf',
+    (gltf) => {
+        firefly = gltf.scene;
+        // scene.add(firefly)
+        clips = gltf.animations
+
+    })
 
 // display whisper popup on click
 window.addEventListener('click', () => {
@@ -267,21 +281,6 @@ gltfTreeLoader.load(
 
 )
 
-// *~ FIREFLY MODEL LOADER ~*
-let gltfFireflyLoader = new GLTFLoader();
-
-gltfFireflyLoader.load(
-    '/models/firefly.glb',
-    (glb) => {
-        firefly = glb.scene;
-        // scene.add(firefly)
-
-        mixer = new THREE.AnimationMixer(firefly)
-        let clips = glb.animations;
-
-
-    })
-
 
 
 // *~ ORBIT CONTROLS
@@ -392,6 +391,21 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 // leaves array
 let leaves = [];
 
+// *~ LEAF MODEL LOADER ~*
+// let leafModelLoader = new GLTFLoader();
+
+// leafModelLoader.load(
+//     '/models/leaf.glb',
+//     (glb) => {
+//         let leaf = glb.scene;
+//         scene.add(leaf);
+
+//         // leaf position
+//         leaf.position.set(0,2,0)
+//         leaf.scale.set(0.3, 0.3, 0.3)
+//     }
+// )
+
 // leaf geometry
 let leafGeometry = new THREE.BoxGeometry(1, 0.01, 1);
 
@@ -470,13 +484,6 @@ leafIcon.addEventListener('click', () => {
 
 // *~ CREATE WHISPERS ~*
 
-// whisper animation timeline -- !! once you replace w/ blender mesh, animate so that it expands on hover !!
-let tl = gsap.timeline(
-    {
-        repeat: -1,
-        yoyo: true,
-    });
-
 // whisper geometry
 let whisperGeometry = new THREE.SphereGeometry(0.05, 30, 30);
 
@@ -489,23 +496,30 @@ let whisperMaterial = new THREE.MeshStandardMaterial({
 
 // called to create new whisper meshes
 let createWhisper = () => {
+
     // create whisper mesh
-    let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
-    whisperMesh.visible = false; // mesh invisible when initially called (toggled with input)
-    scene.add(whisperMesh);
-    console.log(whisperMesh)
+    // let fireflyMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
+    let fireflyMesh = SkeletonUtils.clone(firefly)
+    fireflyMesh.visible = false; // mesh invisible when initially called (toggled with input)
+    scene.add(fireflyMesh);
+    console.log(fireflyMesh)
 
     // place whisper at mouse position
-    whisperMesh.position.copy(intersectionPoint);
+    fireflyMesh.position.copy(intersectionPoint);
+    // scale down
+    fireflyMesh.scale.set(0.9, 0.9, 0.9)
 
     // add whisper to array
-    whispers.push(whisperMesh);
+    whispers.push(fireflyMesh);
 
     console.log(whispers)
 
     // animate
-    tl.to(whisperMesh.scale, { duration: 1, x: 1.3, y: 1.3, z: 1.3 }, 'start')
-
+    const mixer = new THREE.AnimationMixer(fireflyMesh)
+    let clip = THREE.AnimationClip.findByName(clips, 'KeyAction.001')
+    let action = mixer.clipAction(clip)
+    action.play()
+    mixers.push(mixer)
 
 }
 
@@ -569,9 +583,6 @@ whisperSubmit.addEventListener('click', () => {
                 newMessage.setAttribute('data-position', JSON.stringify(whisperObject.position));
                 console.log(newMessage)
 
-                // 5. add text to whisper popup on hover
-                // whisperContainer.appendChild(newMessage) // !! change to modals !!
-                // whisperMessagePop.appendChild(newMessage)
 
             })
             .catch(error => {
@@ -608,6 +619,13 @@ window.addEventListener('click', (event) => {
 // prevent popup being closed from clicking inside popup
 popupInner.addEventListener('click', event => event.stopPropagation());
 
+// *~ GSAP TIMELINE
+let tl = gsap.timeline(
+    {
+        repeat: -1,
+        yoyo: true,
+    });
+
 
 // *~ THREE.JS ANIMATE ~*
 const clock = new THREE.Clock()
@@ -619,6 +637,11 @@ const tick = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousElapsedTime;
     previousElapsedTime = elapsedTime;
+
+    // update mixers
+    mixers.forEach(function (mixer) {
+        mixer.update(deltaTime / 2);
+    })
 
     // update raycaster + find raycaster intersections
     raycaster.setFromCamera(cursor, camera);
@@ -635,6 +658,10 @@ const tick = () => {
             INTERSECTED = intersects[0].object
             INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex()
             INTERSECTED.material.emissive.setHex(0xFFFFFF)
+
+
+            gsap.to(INTERSECTED.scale, { duration: 1, x: 1.5, y: 1.5, z: 1.5 })
+            gsap.to(INTERSECTED.scale, { duration: 1, delay: 1.5, x: 1, y: 1, z: 1 })
 
         }
 
