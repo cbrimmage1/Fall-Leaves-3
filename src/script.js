@@ -31,8 +31,6 @@ let popupInner = document.getElementById('popup__inner');
 let whisper = document.querySelector('#popup__input');
 let whisperInput = document.getElementById('popup__input');
 let whisperSubmit = document.querySelector('#popup__submit');
-// whisper text container
-let whisperContainer = document.getElementById("whisper__container")
 // whisper message popup
 let whisperMessagePop = document.getElementById("whisper__popup")
 
@@ -44,6 +42,28 @@ let planeNormal = new THREE.Vector3();
 let mousePlane = new THREE.Plane();
 let raycaster = new THREE.Raycaster();
 
+// display whisper popup on click
+window.addEventListener('click', () => {
+    if (INTERSECTED) {
+        // open the popup
+        whisperMessagePop.classList.add("open");
+
+        // target the popup text
+        let innerMessage = document.getElementById("whisper__popup__inner")
+        innerMessage.innerHTML = ""; // clears out any previous text
+
+        // make server message a 'p' element
+        let serverMessage = document.createElement('p');
+        serverMessage.className = 'server__text'
+        serverMessage.innerHTML = INTERSECTED.message
+
+        // append server messages to corresponding mesh
+        innerMessage.append(serverMessage)
+    }
+    if (event.target == whisperMessagePop) {
+        whisperMessagePop.classList.remove("open")
+    }
+})
 
 //*~ FETCH WHISPER MESSAGES FROM THE SERVER
 fetch('/messages')
@@ -60,30 +80,13 @@ fetch('/messages')
             let message = loadedWhispers[i].text;
             console.log(message)
 
-            // make message a 'p' element
-            let serverMessage = document.createElement('p');
-            serverMessage.className = 'server__text'
-            serverMessage.innerHTML = message
-
-            // append text to whisper popup
-            whisperMessagePop.appendChild(serverMessage)
-
-            // display popup on click
-            window.addEventListener('click', () => {
-                if (INTERSECTED) {
-                    whisperMessagePop.classList.add("open");
-                }
-                if (event.target == whisperMessagePop) {
-                    whisperMessagePop.classList.remove("open")
-                }
-            })
-
             // grab position
             let position = loadedWhispers[i].position;
             console.log(position)
 
             // create new mesh
-            let loadWhisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
+            let loadWhisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial.clone());
+            loadWhisperMesh.message = message
             scene.add(loadWhisperMesh);
 
             // push mesh to whisper array
@@ -618,7 +621,6 @@ const tick = () => {
     previousElapsedTime = elapsedTime;
 
     // update raycaster + find raycaster intersections
-
     raycaster.setFromCamera(cursor, camera);
 
     let whisperIntersects = [...whispers];
@@ -627,7 +629,6 @@ const tick = () => {
     if (intersects.length > 0) {
 
         if (INTERSECTED != intersects[0].object) {
-            console.log(intersects[0].object)
 
             if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex)
 
