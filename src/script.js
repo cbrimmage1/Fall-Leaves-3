@@ -6,6 +6,15 @@ import CANNON from 'cannon'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import gsap from 'gsap';
 
+// firefly model
+let firefly;
+let mixer;
+
+// ????
+let INTERSECTED;
+
+// whispers array
+let whispers = [];
 
 // *~ GRAB DOM ELEMENTS~*
 // icons
@@ -13,14 +22,19 @@ let infoIcon = document.getElementById('info__icon');
 let leafIcon = document.getElementById('leaf__icon');
 let musicIcon = document.getElementById('music__icon');
 let soundIcon = document.getElementById('sound__icon');
-// whisper pop up
-let popup = document.getElementById("popup")
-let popupInner = document.getElementById('popup__inner')
-let whisper = document.querySelector('#popup__input')
-let whisperInput = document.getElementById('popup__input')
-let whisperSubmit = document.querySelector('#popup__submit')
+// music
+let lofiMusic = document.getElementById('lofi');
+lofiMusic.loop = true;
+// whisper input pop up
+let popup = document.getElementById("popup");
+let popupInner = document.getElementById('popup__inner');
+let whisper = document.querySelector('#popup__input');
+let whisperInput = document.getElementById('popup__input');
+let whisperSubmit = document.querySelector('#popup__submit');
 // whisper text container
 let whisperContainer = document.getElementById("whisper__container")
+// whisper message popup
+let whisperMessagePop = document.getElementById("whisper__popup")
 
 
 // *~ VARIABLES FOR 'WHISPERS' EVENT
@@ -38,13 +52,31 @@ fetch('/messages')
     })
     .then(data => {
         console.log(data);
-        //Add all the messages from the server to the page
+        //add all the messages from the server to the page
         let loadedWhispers = data.data;
         console.log(loadedWhispers);
         for (let i = 0; i < loadedWhispers.length; i++) {
             // grab text
             let message = loadedWhispers[i].text;
             console.log(message)
+
+            // make message a 'p' element
+            let serverMessage = document.createElement('p');
+            serverMessage.className = 'server__text'
+            serverMessage.innerHTML = message
+
+            // append text to whisper popup
+            whisperMessagePop.appendChild(serverMessage)
+
+            // display popup on click
+            window.addEventListener('click', () => {
+                if (INTERSECTED) {
+                    whisperMessagePop.classList.add("open");
+                }
+                if (event.target == whisperMessagePop) {
+                    whisperMessagePop.classList.remove("open")
+                }
+            })
 
             // grab position
             let position = loadedWhispers[i].position;
@@ -54,6 +86,10 @@ fetch('/messages')
             let loadWhisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
             scene.add(loadWhisperMesh);
 
+            // push mesh to whisper array
+            whispers.push(loadWhisperMesh);
+            console.log(whispers)
+
             // place loaded whisper
             loadWhisperMesh.position.copy(position)
 
@@ -62,6 +98,14 @@ fetch('/messages')
     .catch(error => {
         console.log(error);
     });
+
+
+// *~ TOGGLE AUDIO ~*
+
+musicIcon.addEventListener('click', () => {
+    return lofiMusic.paused ? lofiMusic.play() : lofiMusic.pause()
+
+})
 
 
 // *~ THREE.JS SETUP ~*
@@ -135,10 +179,25 @@ floor.rotation.x = - Math.PI * 0.5
 scene.add(floor)
 
 
-// *~ TREE MODEL LOADER ~*
-let gltfLoader = new GLTFLoader();
+// *~ BLANKET MODEL LOADER ~*
+let blanketModelLoader = new GLTFLoader();
 
-gltfLoader.load(
+blanketModelLoader.load(
+    '/models/blanket.glb',
+    (glb) => {
+        let blanket = glb.scene;
+        // scene.add(blanket);
+
+        // blanket position
+        // blanket.scale.set(0.9, 0.9, 0.9)
+        blanket.position.set(-4, 0.09, 4)
+    }
+)
+
+// *~ TREE MODEL LOADER ~*
+let gltfTreeLoader = new GLTFLoader();
+
+gltfTreeLoader.load(
     '/models/autumn_tree.glb',
     (glb) => {
 
@@ -205,16 +264,32 @@ gltfLoader.load(
 
 )
 
+// *~ FIREFLY MODEL LOADER ~*
+let gltfFireflyLoader = new GLTFLoader();
+
+gltfFireflyLoader.load(
+    '/models/firefly.glb',
+    (glb) => {
+        firefly = glb.scene;
+        // scene.add(firefly)
+
+        mixer = new THREE.AnimationMixer(firefly)
+        let clips = glb.animations;
+
+
+    })
+
+
 
 // *~ ORBIT CONTROLS
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 controls.dampingFactor = 0.01;
 controls.enablePan = false;
-controls.minPolarAngle = Math.PI * 0.35;
-controls.maxPolarAngle = Math.PI * 0.45;
-controls.minAzimuthAngle = - 1;
-controls.maxAzimuthAngle = -0.5;
+controls.minPolarAngle = Math.PI * 0.37;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.minAzimuthAngle = - 1.2;
+controls.maxAzimuthAngle = -0.2;
 controls.maxDistance = 5;
 controls.minDistance = 2;
 
@@ -224,8 +299,8 @@ controls.minDistance = 2;
 let world = new CANNON.World();
 world.broadphase = new CANNON.SAPBroadphase(world);
 
-world.defaultContactMaterial.contactEquationStiffness = 1e15; // Contact stiffness - use to make softer/harder contacts
-world.defaultContactMaterial.contactEquationRelaxation = 2; // Stabilization time in number of timesteps
+world.defaultContactMaterial.contactEquationStiffness = 1e15; // contact stiffness (use to make softer/harder contacts)
+world.defaultContactMaterial.contactEquationRelaxation = 2; // stabilization time (in number of timesteps)
 
 world.gravity.set(0, -1.82, 0);
 
@@ -268,6 +343,7 @@ floorBody.quaternion.setFromAxisAngle( // rotate floor
 );
 world.addBody(floorBody); // add floor to physics world
 
+
 // *~ MOUSE MOVE EVENT ~*
 // mouse move
 window.addEventListener('mousemove', (event) => {
@@ -280,8 +356,8 @@ window.addEventListener('mousemove', (event) => {
     mousePlane.setFromNormalAndCoplanarPoint(planeNormal, scene.position);
 
     // update raycaster
-    raycaster.setFromCamera(cursor, camera);
     raycaster.ray.intersectPlane(mousePlane, intersectionPoint);
+
 })
 
 window.addEventListener('resize', () => {
@@ -338,7 +414,7 @@ let createLeaf = (width, height, depth, position, color) => {
     scene.add(mesh);
 
     // create cannon.js leaf physics body
-    let shape = new CANNON.Box(new CANNON.Vec3(width * 0.5, height * 0.5, depth * 0.5)); // should be plane; figure out plane glitch
+    let shape = new CANNON.Box(new CANNON.Vec3(width * 0.5, height * 0.5, depth * 0.5));
     let body = new CANNON.Body({
         mass: 1,
         position: new CANNON.Vec3(0, 3, 0),
@@ -390,8 +466,6 @@ leafIcon.addEventListener('click', () => {
 
 
 // *~ CREATE WHISPERS ~*
-// whispers array
-let whispers = [];
 
 // whisper animation timeline -- !! once you replace w/ blender mesh, animate so that it expands on hover !!
 let tl = gsap.timeline(
@@ -414,7 +488,7 @@ let whisperMaterial = new THREE.MeshStandardMaterial({
 let createWhisper = () => {
     // create whisper mesh
     let whisperMesh = new THREE.Mesh(whisperGeometry, whisperMaterial);
-    whisperMesh.visible = false; // mesh visibility
+    whisperMesh.visible = false; // mesh invisible when initially called (toggled with input)
     scene.add(whisperMesh);
     console.log(whisperMesh)
 
@@ -488,11 +562,13 @@ whisperSubmit.addEventListener('click', () => {
                 let newMessage = document.createElement('p');
                 newMessage.className = 'whisper__text'
                 newMessage.innerHTML = whisperValue
-                newMessage.visi
+                // newMessage.visible 
                 newMessage.setAttribute('data-position', JSON.stringify(whisperObject.position));
                 console.log(newMessage)
-                // console.log(newMessage)
-                whisperContainer.appendChild(newMessage) // !! change to modals !!
+
+                // 5. add text to whisper popup on hover
+                // whisperContainer.appendChild(newMessage) // !! change to modals !!
+                // whisperMessagePop.appendChild(newMessage)
 
             })
             .catch(error => {
@@ -503,8 +579,7 @@ whisperSubmit.addEventListener('click', () => {
         // 5. show mesh element
         lastWhisper.visible = true;
 
-
-
+        // if the submission is empty, remove the last whisper mesh that was created
     } else if (whisperValue == '') {
 
         let remove = whispers.pop()
@@ -541,6 +616,34 @@ const tick = () => {
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousElapsedTime;
     previousElapsedTime = elapsedTime;
+
+    // update raycaster + find raycaster intersections
+
+    raycaster.setFromCamera(cursor, camera);
+
+    let whisperIntersects = [...whispers];
+    const intersects = raycaster.intersectObjects(whisperIntersects, false)
+
+    if (intersects.length > 0) {
+
+        if (INTERSECTED != intersects[0].object) {
+            console.log(intersects[0].object)
+
+            if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex)
+
+            INTERSECTED = intersects[0].object
+            INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex()
+            INTERSECTED.material.emissive.setHex(0xFFFFFF)
+
+        }
+
+    } else {
+
+        if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex)
+
+        INTERSECTED = null
+
+    }
 
     // update wind force
     for (let object of leaves) {

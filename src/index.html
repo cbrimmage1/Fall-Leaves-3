@@ -10,12 +10,17 @@
 </head>
 
 <body>
+    <audio id="lofi">
+        <source src="/sounds/lofi.mp3">
+    </audio>
+
     <div id="icons">
         <button id="info__icon"><i class="fa-solid fa-circle-info"></i></button>
         <button id="leaf__icon"><i class="fa-solid fa-leaf"></i></button>
         <button id="music__icon"><i class="fa-solid fa-music"></i></button>
         <button id="sound__icon"><i class="fa-solid fa-volume-off"></i></button>
     </div>
+
     <div class="popup" id="popup">
         <div id="popup__inner">
             <h3 id="popup__header"> Leave a whisper</h3>
@@ -25,6 +30,13 @@
             <button id="popup__submit">Submit a message</button>
         </div>
     </div>
+
+    <div class="whisperPopup" id="whisper__popup">
+    <div id="whisper__popup__inner">
+        <p>testing</p>
+    </div>
+    </div>
+
     <canvas class="webgl"></canvas>
     <section class="whisper__container" id="whisper__container"></section>
     <script type="module" src="./script.js"></script>
